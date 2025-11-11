@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="color-scheme" content="dark light">
+  <title>Journal of Parmeshwar Ekah</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Hamburger -->
+  <button id="hamb" aria-label="Open calendar" class="hamb">☰</button>
+
+  <!-- Slide-in panel -->
+  <aside id="panel" class="panel" aria-hidden="true">
+    <div class="panel-inner">
+      <header class="panel-header">
+        <div class="panel-title">Choose date</div>
+        <button id="closePanel" aria-label="Close" class="close">✕</button>
+      </header>
+
+      <div class="calendar-controls">
+        <select id="monthSelect" aria-label="Month"></select>
+        <select id="yearSelect" aria-label="Year"></select>
+      </div>
+
+      <div id="calendar" class="calendar" role="grid" aria-label="Calendar"></div>
+
+      <div class="panel-footer">
+        <button id="todayBtn" class="minor">Jump to Today</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main id="main" class="main" role="main">
+    <div class="logo-area" aria-hidden="true">
+      <!-- optional: place an inline svg or image here -->
+      <div class="shunya">◯ •</div>
+    </div>
+
+    <h1 class="site-title">Journal of Parmeshwar</h1>
+    <p class="tagline">Silence. Observation. Becoming.</p>
+
+    <article id="post" class="post" aria-live="polite">
+      <!-- filled by JS -->
+    </article>
+
+    <footer class="foot">
+      <p>© Parmeshwar Ekah | Since 2025</p>
+    </footer>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
