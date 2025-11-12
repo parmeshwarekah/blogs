@@ -79,94 +79,99 @@
 
   <script src="script.js"></script>
 
-  <script>
-    // ------------------ NEW: Load Entries from GitHub ------------------
-    async function loadFromGitHub() {
-      const username = "parmeshwarekah";
-      const repo = "blogs";
-      const path = "entries.json";
-      const url = `https://raw.githubusercontent.com/${username}/${repo}/main/${path}`;
+ <script>
+  // ------------------ NEW: Load Entries from GitHub API ------------------
+  async function loadFromGitHub() {
+    const username = "parmeshwarekah";
+    const repo = "blogs";
+    const path = "entries.json";
+    const apiUrl = `https://api.github.com/repos/${username}/${repo}/contents/${path}`;
 
-      try {
-        const res = await fetch(url + "?t=" + Date.now()); // prevent cache
-        if (!res.ok) throw new Error("entries.json not found");
-        const data = await res.json();
+    try {
+      const res = await fetch(apiUrl, { cache: "no-store" });
+      if (!res.ok) throw new Error("entries.json not found");
+      const json = await res.json();
 
-        // Merge GitHub + Local entries
-        const local = JSON.parse(localStorage.getItem("journalPosts")) || {};
-        const merged = { ...data, ...local };
-        localStorage.setItem("journalPosts", JSON.stringify(merged));
-        console.log("✅ Loaded entries from GitHub");
-      } catch (err) {
-        console.error("⚠️ Could not load GitHub entries:", err);
-      }
+      // Decode the base64 content returned by the GitHub API
+      const decoded = atob(json.content);
+      const data = JSON.parse(decoded);
+
+      // Merge GitHub + Local entries
+      const local = JSON.parse(localStorage.getItem("journalPosts")) || {};
+      const merged = { ...data, ...local };
+      localStorage.setItem("journalPosts", JSON.stringify(merged));
+      console.log("✅ Loaded fresh entries from GitHub API");
+    } catch (err) {
+      console.error("⚠️ Could not load GitHub entries:", err);
+    }
+  }
+
+  // ------------------ Render Logic ------------------
+  function loadEntriesForDate(date) {
+    const container = document.getElementById("post");
+    const journal = JSON.parse(localStorage.getItem("journalPosts")) || {};
+    container.innerHTML = "";
+
+    if (!journal[date] || journal[date].length === 0) {
+      container.innerHTML = "<p>No entries for this date.</p>";
+      return;
     }
 
-    // Load entries before rendering
-    (async function() {
-      await loadFromGitHub();
-      renderEntries();
-    })();
+    const dayEntries = journal[date]
+      .sort((a, b) => new Date(b.created) - new Date(a.created))
+      .map(entry => `
+        <div class="entry-block">
+          <p class="entry-time">[${formatDateShort(date)} ${entry.time}]</p>
+          ${entry.title ? `<p class="entry-title">${entry.title}</p>` : ""}
+          <p class="entry-text">${entry.text.replace(/\n/g, "<br>")}</p>
+          <hr class="entry-separator">
+        </div>
+      `)
+      .join("");
 
-    // ------------------ Existing Local Render Logic ------------------
-    function loadEntriesForDate(date) {
-      const container = document.getElementById("post");
-      const journal = JSON.parse(localStorage.getItem("journalPosts")) || {};
-      container.innerHTML = "";
+    container.innerHTML = dayEntries;
+  }
 
-      if (!journal[date] || journal[date].length === 0) {
-        container.innerHTML = "<p>No entries for this date.</p>";
-        return;
-      }
+  function formatDateShort(dateString) {
+    const date = new Date(dateString);
+    const day = date.getDate();
+    const month = date.toLocaleString("en-GB", { month: "short" });
+    const year = date.getFullYear();
+    return `${day} ${month} ${year}`;
+  }
 
-      const dayEntries = journal[date]
-        .sort((a, b) => new Date(b.created) - new Date(a.created))
-        .map(entry => `
-          <div class="entry-block">
-            <p class="entry-time">[${formatDateShort(date)} ${entry.time}]</p>
-            ${entry.title ? `<p class="entry-title">${entry.title}</p>` : ""}
-            <p class="entry-text">${entry.text.replace(/\n/g, "<br>")}</p>
-            <hr class="entry-separator">
-          </div>
-        `)
-        .join("");
+  function renderEntries() {
+    const container = document.getElementById("post");
+    const journal = JSON.parse(localStorage.getItem("journalPosts")) || {};
+    const allDates = Object.keys(journal).sort((a, b) => new Date(b) - new Date(a));
 
-      container.innerHTML = dayEntries;
-    }
-
-    function formatDateShort(dateString) {
-      const date = new Date(dateString);
-      const day = date.getDate();
-      const month = date.toLocaleString("en-GB", { month: "short" });
-      const year = date.getFullYear();
-      return `${day} ${month} ${year}`;
-    }
-
-    function renderEntries() {
-      const container = document.getElementById("post");
-      const journal = JSON.parse(localStorage.getItem("journalPosts")) || {};
-      const allDates = Object.keys(journal).sort((a, b) => new Date(b) - new Date(a));
-
-      if (allDates.length === 0) {
-        container.innerHTML = "<p>No entries yet.</p>";
-      } else {
-        let output = "";
-        allDates.forEach(date => {
-          const entries = journal[date].sort((a, b) => new Date(b.created) - new Date(a.created));
-          entries.forEach(entry => {
-            output += `
-              <div class="entry-block">
-                <p class="entry-time">[${formatDateShort(date)} ${entry.time}]</p>
-                ${entry.title ? `<p class="entry-title">${entry.title}</p>` : ""}
-                <p class="entry-text">${entry.text.replace(/\n/g, "<br>")}</p>
-                <hr class="entry-separator">
-              </div>
-            `;
-          });
+    if (allDates.length === 0) {
+      container.innerHTML = "<p>No entries yet.</p>";
+    } else {
+      let output = "";
+      allDates.forEach(date => {
+        const entries = journal[date].sort((a, b) => new Date(b.created) - new Date(a.created));
+        entries.forEach(entry => {
+          output += `
+            <div class="entry-block">
+              <p class="entry-time">[${formatDateShort(date)} ${entry.time}]</p>
+              ${entry.title ? `<p class="entry-title">${entry.title}</p>` : ""}
+              <p class="entry-text">${entry.text.replace(/\n/g, "<br>")}</p>
+              <hr class="entry-separator">
+            </div>
+          `;
         });
-        container.innerHTML = output;
-      }
+      });
+      container.innerHTML = output;
     }
-  </script>
+  }
+
+  // ------------------ Initialize ------------------
+  (async function() {
+    await loadFromGitHub();   // pull fresh copy from GitHub
+    renderEntries();          // then show it
+  })();
+</script>
+
 </body>
 </html>
