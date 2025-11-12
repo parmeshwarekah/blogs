@@ -35,7 +35,7 @@ const REPO_NAME = "blogs";
 const FILE_PATH = "entries.json";
 
 // 🟡 paste your personal access token (classic with repo access) below:
-const GITHUB_TOKEN = "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"; // ← don’t share publicly
+const GITHUB_TOKEN = localstorage.getItem("githubtoken"); // ← don’t share publicly
 
 /* ========== PASSWORD LOCK ========== */
 const lockScreen = document.getElementById("lockScreen");
