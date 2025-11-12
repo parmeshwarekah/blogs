@@ -24,79 +24,116 @@
       <label>Text:<br><textarea id="entryText" rows="8" required></textarea></label><br>
       <button type="submit" class="minor">Save Entry</button>
     </form>
-    <p class="muted">Entries are saved in your browser storage (localStorage). They will show on your journal automatically.</p>
+    <p class="muted">Entries are saved in your browser storage (localStorage) and synced to GitHub for backup.</p>
   </main>
 
-  <script>
-  const PASSWORD = "123456"; // 🔑 change this to your own password
-  const lockScreen = document.getElementById("lockScreen");
-  const editorScreen = document.getElementById("editorScreen");
-  const passInput = document.getElementById("passInput");
+<script>
+/* ========== CONFIG ========== */
+const PASSWORD = "123456"; // change to your password
+const GITHUB_USERNAME = "parmeshwarekah";
+const REPO_NAME = "blogs";
+const FILE_PATH = "entries.json";
 
-  // Auto unlock when password matches
-  passInput.addEventListener("input", () => {
-    if (passInput.value === PASSWORD) {
-      unlockEditor();
-    }
+// 🟡 paste your personal access token (classic with repo access) below:
+const GITHUB_TOKEN = "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"; // ← don’t share publicly
+
+/* ========== PASSWORD LOCK ========== */
+const lockScreen = document.getElementById("lockScreen");
+const editorScreen = document.getElementById("editorScreen");
+const passInput = document.getElementById("passInput");
+
+passInput.addEventListener("input", () => {
+  if (passInput.value === PASSWORD) unlockEditor();
+});
+passInput.addEventListener("keypress", (e) => {
+  if (e.key === "Enter" && passInput.value === PASSWORD) unlockEditor();
+});
+
+function unlockEditor() {
+  lockScreen.style.display = "none";
+  editorScreen.style.display = "block";
+  autofillDateTime();
+}
+
+/* ========== AUTO DATE/TIME ========== */
+function autofillDateTime() {
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  const hh = String(now.getHours()).padStart(2, "0");
+  const min = String(now.getMinutes()).padStart(2, "0");
+  document.getElementById("entryDate").value = `${yyyy}-${mm}-${dd}`;
+  document.getElementById("entryTime").value = `${hh}:${min}`;
+}
+
+/* ========== SAVE ENTRY ========== */
+const form = document.getElementById("entryForm");
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const date = document.getElementById("entryDate").value;
+  const time = document.getElementById("entryTime").value;
+  const title = document.getElementById("entryTitle").value.trim();
+  const text = document.getElementById("entryText").value.trim();
+
+  if (!date || !title || !text) return alert("All fields required.");
+
+  const posts = JSON.parse(localStorage.getItem("journalPosts") || "{}");
+  if (!Array.isArray(posts[date])) posts[date] = [];
+
+  posts[date].push({
+    title,
+    time,
+    text,
+    created: new Date().toISOString(),
   });
 
-  passInput.addEventListener("keypress", (e) => {
-    if (e.key === "Enter" && passInput.value === PASSWORD) {
-      unlockEditor();
-    }
+  localStorage.setItem("journalPosts", JSON.stringify(posts));
+  alert("✅ Entry saved locally and syncing to GitHub...");
+  form.reset();
+  autofillDateTime();
+
+  try {
+    await syncToGitHub(posts);
+    alert("☁️ Synced successfully to GitHub!");
+  } catch (err) {
+    console.error("GitHub sync failed:", err);
+    alert("⚠️ Saved locally, but GitHub sync failed.");
+  }
+});
+
+/* ========== GITHUB SYNC ========== */
+async function syncToGitHub(data) {
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
+  const apiURL = `https://api.github.com/repos/${GITHUB_USERNAME}/${REPO_NAME}/contents/${FILE_PATH}`;
+
+  // check if file exists to get SHA
+  const res = await fetch(apiURL, {
+    headers: { Authorization: `token ${GITHUB_TOKEN}` },
   });
 
-  function unlockEditor() {
-    lockScreen.style.display = "none";
-    editorScreen.style.display = "block";
-    autofillDateTime();
+  let sha = null;
+  if (res.ok) {
+    const existing = await res.json();
+    sha = existing.sha;
   }
 
-  // ✅ Use your system's local date & time directly (no offset!)
-  function autofillDateTime() {
-    const now = new Date();
-    const dateInput = document.getElementById("entryDate");
-    const timeInput = document.getElementById("entryTime");
-
-    // Format correctly for input[type=date] and [type=time]
-    const yyyy = now.getFullYear();
-    const mm = String(now.getMonth() + 1).padStart(2, "0");
-    const dd = String(now.getDate()).padStart(2, "0");
-    const hh = String(now.getHours()).padStart(2, "0");
-    const min = String(now.getMinutes()).padStart(2, "0");
-
-    dateInput.value = `${yyyy}-${mm}-${dd}`;
-    timeInput.value = `${hh}:${min}`;
-  }
-
-  // Save entry to localStorage
-  const form = document.getElementById("entryForm");
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const date = document.getElementById("entryDate").value;
-    const time = document.getElementById("entryTime").value;
-    const title = document.getElementById("entryTitle").value.trim();
-    const text = document.getElementById("entryText").value.trim();
-
-    if (!date) return alert("Date required.");
-
-    // Load and update journal
-    const posts = JSON.parse(localStorage.getItem("journalPosts") || "{}");
-    if (!Array.isArray(posts[date])) posts[date] = [];
-
-    posts[date].push({
-      title,
-      time,
-      text,
-      created: new Date().toISOString(),
-    });
-
-    localStorage.setItem("journalPosts", JSON.stringify(posts));
-    alert("✅ Entry saved! It will now appear on your main journal page.");
-    form.reset();
-    autofillDateTime();
+  // upload (create or update)
+  const result = await fetch(apiURL, {
+    method: "PUT",
+    headers: {
+      Authorization: `token ${GITHUB_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      message: "Add new journal entry",
+      content,
+      sha,
+    }),
   });
+
+  if (!result.ok) throw new Error("GitHub upload failed");
+}
 </script>
-
 </body>
 </html>
