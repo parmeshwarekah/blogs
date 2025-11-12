@@ -41,12 +41,13 @@ if (!localStorage.getItem("githubtoken")) {
 
 /* ========== CONFIG ========== */
 const PASSWORD = "0000"; // change to your password
-const GITHUB_USERNAME = "parmeshwarekah";
-const REPO_NAME = "blogs";
-const FILE_PATH = "entries.json";
+const username = "parmeshwarekah";
+const repo = "blogs";
+const path = "entries.json";
+const branch = "main";
 
-// 🟡 paste your personal access token (classic with repo access) below:
-const GITHUB_TOKEN = localStorage.getItem("githubtoken"); // ← don’t share publicly
+// 🟡 your GitHub token (stored safely in browser)
+const GITHUB_TOKEN = localStorage.getItem("githubtoken");
 
 /* ========== PASSWORD LOCK ========== */
 const lockScreen = document.getElementById("lockScreen");
@@ -116,7 +117,7 @@ form.addEventListener("submit", async (e) => {
 /* ========== GITHUB SYNC ========== */
 async function syncToGitHub(data) {
   const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
-  const apiURL = `https://api.github.com/repos/${GITHUB_USERNAME}/${REPO_NAME}/contents/${FILE_PATH}`;
+  const apiURL = `https://api.github.com/repos/${username}/${repo}/contents/${path}`;
 
   // check if file exists to get SHA
   const res = await fetch(apiURL, {
@@ -140,6 +141,7 @@ async function syncToGitHub(data) {
       message: "Add new journal entry",
       content,
       sha,
+      branch,
     }),
   });
 
