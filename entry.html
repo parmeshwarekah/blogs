@@ -28,6 +28,17 @@
   </main>
 
 <script>
+// ---------- GitHub Token Setup ----------
+if (!localStorage.getItem("githubtoken")) {
+  const token = prompt("🔑 Paste your GitHub token (only once, it’ll be saved):");
+  if (token) {
+    localStorage.setItem("githubtoken", token.trim());
+    alert("✅ Token saved! You won’t need to paste it again.");
+  } else {
+    alert("⚠️ Token missing — you can’t sync to GitHub until you add it.");
+  }
+}
+
 /* ========== CONFIG ========== */
 const PASSWORD = "0000"; // change to your password
 const GITHUB_USERNAME = "parmeshwarekah";
