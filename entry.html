@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Journal Entry Editor — Parmeshwar</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="entry-page">
+  <!-- Lock Screen -->
+  <main class="main" id="lockScreen">
+    <h1>🔒 Enter Password</h1>
+    <input type="password" id="passInput" placeholder="Password" autofocus>
+    <p class="muted">Access restricted — for Parmeshwar only.</p>
+  </main>
+
+  <!-- Editor Screen -->
+  <main class="main" id="editorScreen" style="display:none;">
+    <h1>Add New Journal Entry</h1>
+    <form id="entryForm">
+      <label>Date: <input type="date" id="entryDate" required readonly></label><br>
+      <label>Time: <input type="time" id="entryTime" required readonly></label><br>
+      <label>Title: <input type="text" id="entryTitle" required></label><br>
+      <label>Text:<br><textarea id="entryText" rows="8" required></textarea></label><br>
+      <button type="submit" class="minor">Save Entry</button>
+    </form>
+    <p class="muted">Entries are saved in your browser storage (localStorage). They will show on your journal automatically.</p>
+  </main>
+
+  <script>
+  const PASSWORD = "123456"; // 🔑 change this to your own password
+  const lockScreen = document.getElementById("lockScreen");
+  const editorScreen = document.getElementById("editorScreen");
+  const passInput = document.getElementById("passInput");
+
+  // Auto unlock when password matches
+  passInput.addEventListener("input", () => {
+    if (passInput.value === PASSWORD) {
+      unlockEditor();
+    }
+  });
+
+  passInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter" && passInput.value === PASSWORD) {
+      unlockEditor();
+    }
+  });
+
+  function unlockEditor() {
+    lockScreen.style.display = "none";
+    editorScreen.style.display = "block";
+    autofillDateTime();
+  }
+
+  // ✅ Use your system's local date & time directly (no offset!)
+  function autofillDateTime() {
+    const now = new Date();
+    const dateInput = document.getElementById("entryDate");
+    const timeInput = document.getElementById("entryTime");
+
+    // Format correctly for input[type=date] and [type=time]
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const dd = String(now.getDate()).padStart(2, "0");
+    const hh = String(now.getHours()).padStart(2, "0");
+    const min = String(now.getMinutes()).padStart(2, "0");
+
+    dateInput.value = `${yyyy}-${mm}-${dd}`;
+    timeInput.value = `${hh}:${min}`;
+  }
+
+  // Save entry to localStorage
+  const form = document.getElementById("entryForm");
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const date = document.getElementById("entryDate").value;
+    const time = document.getElementById("entryTime").value;
+    const title = document.getElementById("entryTitle").value.trim();
+    const text = document.getElementById("entryText").value.trim();
+
+    if (!date) return alert("Date required.");
+
+    // Load and update journal
+    const posts = JSON.parse(localStorage.getItem("journalPosts") || "{}");
+    if (!Array.isArray(posts[date])) posts[date] = [];
+
+    posts[date].push({
+      title,
+      time,
+      text,
+      created: new Date().toISOString(),
+    });
+
+    localStorage.setItem("journalPosts", JSON.stringify(posts));
+    alert("✅ Entry saved! It will now appear on your main journal page.");
+    form.reset();
+    autofillDateTime();
+  });
+</script>
+
+</body>
+</html>

@@ -1,22 +1,21 @@
-/* Simple data store: add posts here. Keys are YYYY-MM-DD */
-const posts = {
-  "2025-11-12": "[03:00] Read something interesting about ancient minds.",
-
-  // add more entries here
-};
+/* Load stored posts from localStorage */
+const posts = JSON.parse(localStorage.getItem('journalPosts') || '{}');
 
 const el = (s)=> document.querySelector(s);
 const panel = el('#panel');
 const hamb = el('#hamb');
-const closePanel = el('#closePanel');
+const closeHamb = el('#closePanelBtn');
 const monthSelect = el('#monthSelect');
 const yearSelect = el('#yearSelect');
 const calendar = el('#calendar');
 const todayBtn = el('#todayBtn');
 const postArea = el('#post');
 
-function fmt(d){
-  return d.toISOString().slice(0,10); // YYYY-MM-DD
+function fmtLocal(d){
+  // Format date as YYYY-MM-DD using local time (not UTC)
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0,10);
 }
 
 function renderPost(dateKey){
@@ -34,14 +33,15 @@ function renderPost(dateKey){
   }
 }
 
-/* calendar utilities */
+/* Calendar utilities */
 const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 function populateMonthYearControls(){
   const now = new Date();
-  const startYear = now.getFullYear() - 2; // adjustable history
+  const startYear = 1970;
+  const endYear = now.getFullYear() + 100;
   monthSelect.innerHTML = monthNames.map((m,i)=>`<option value="${i}">${m}</option>`).join('');
   let opts = '';
-  for(let y = startYear; y <= now.getFullYear()+1; y++){
+  for(let y = startYear; y <= endYear; y++){
     opts += `<option value="${y}">${y}</option>`;
   }
   yearSelect.innerHTML = opts;
@@ -51,7 +51,6 @@ function populateMonthYearControls(){
 
 function buildCalendar(month, year){
   calendar.innerHTML = '';
-  // weekdays header
   const wk = ['Su','Mo','Tu','We','Th','Fr','Sa'];
   wk.forEach(w=> { const elw = document.createElement('div'); elw.className='weekday'; elw.textContent = w; calendar.appendChild(elw); });
 
@@ -59,81 +58,95 @@ function buildCalendar(month, year){
   const startDay = first.getDay();
   const daysInMonth = new Date(year, month+1, 0).getDate();
 
-  // pad blanks
+  // local date string for today
+  const todayStr = fmtLocal(new Date());
+
+  // padding
   for(let i=0;i<startDay;i++){
-    const blank = document.createElement('div'); blank.className='day disabled'; blank.textContent='';
+    const blank = document.createElement('div');
+    blank.className='day disabled';
     calendar.appendChild(blank);
   }
 
-  const todayStr = fmt(new Date());
-
+  // day cells
   for(let d=1; d<=daysInMonth; d++){
     const dd = new Date(year, month, d);
-    const key = dd.toISOString().slice(0,10);
+    const key = fmtLocal(dd);
     const dayEl = document.createElement('button');
     dayEl.className = 'day';
     dayEl.textContent = d;
     dayEl.setAttribute('data-key', key);
-    dayEl.setAttribute('aria-label', `${d} ${monthNames[month]} ${year}`);
     if(key === todayStr) dayEl.classList.add('today');
 
-    // mark if exists
-    if(!posts[key]) { /* leave as is, optional style to indicate empty */ }
+  dayEl.addEventListener('click', ()=>{
+  document.querySelectorAll('.day.selected').forEach(el => el.classList.remove('selected'));
+  dayEl.classList.add('selected');
+  togglePanel(false);
+  location.hash = key;
 
-    dayEl.addEventListener('click', ()=>{
-      renderPost(key);
-      closePanel.click();
-      // update URL hash for direct linking
-      location.hash = key;
-    });
+  // 🟢 Use the unified function from index.html to show entries
+  if (typeof loadEntriesForDate === "function") {
+    loadEntriesForDate(key);
+  } else {
+    renderPost(key);
+  }
+});
+
 
     calendar.appendChild(dayEl);
   }
+
+  // if hash date is visible, highlight it
+  if(location.hash){
+    const sel = calendar.querySelector(`[data-key="${location.hash.slice(1)}"]`);
+    if(sel) sel.classList.add('selected');
+  }
 }
 
-/* events */
-hamb.addEventListener('click', ()=>{ panel.classList.add('open'); panel.setAttribute('aria-hidden','false'); });
-closePanel.addEventListener('click', ()=>{ panel.classList.remove('open'); panel.setAttribute('aria-hidden','true'); });
-todayBtn.addEventListener('click', ()=> {
+/* Toggle open/close panel + button icons */
+function togglePanel(open){
+  if(open){
+    panel.classList.add('open');
+    hamb.style.display = 'none';
+    closeHamb.style.display = 'block';
+    panel.setAttribute('aria-hidden','false');
+  } else {
+    panel.classList.remove('open');
+    hamb.style.display = 'block';
+    closeHamb.style.display = 'none';
+    panel.setAttribute('aria-hidden','true');
+  }
+}
+
+/* Events */
+hamb.addEventListener('click', ()=> togglePanel(true));
+closeHamb.addEventListener('click', ()=> togglePanel(false));
+todayBtn.addEventListener('click', ()=>{
   const today = new Date();
   monthSelect.value = today.getMonth();
   yearSelect.value = today.getFullYear();
   buildCalendar(today.getMonth(), today.getFullYear());
 });
 
-/* update calendar when selects change */
 monthSelect.addEventListener('change', ()=> buildCalendar(+monthSelect.value, +yearSelect.value));
 yearSelect.addEventListener('change', ()=> buildCalendar(+monthSelect.value, +yearSelect.value));
 
-/* initialize */
 populateMonthYearControls();
 buildCalendar(+monthSelect.value, +yearSelect.value);
 
-/* load todays post or post from url-hash */
+/* Load today's post or hash */
 (function initLoad(){
   let dateToLoad = null;
   if(location.hash && /^#\d{4}-\d{2}-\d{2}$/.test(location.hash)){
     dateToLoad = location.hash.slice(1);
   } else {
-    dateToLoad = fmt(new Date());
+    dateToLoad = fmtLocal(new Date());
   }
-  // if date not in this month selection, update selects to match
   const d = new Date(dateToLoad);
   if(!isNaN(d)){
     monthSelect.value = d.getMonth();
     yearSelect.value = d.getFullYear();
     buildCalendar(d.getMonth(), d.getFullYear());
-    // highlight today's or the chosen day by focusing
-    const chosen = calendar.querySelector(`[data-key="${dateToLoad}"]`);
-    if(chosen) chosen.focus();
   }
   renderPost(dateToLoad);
 })();
-
-/* optional: close panel on outside click */
-window.addEventListener('click',(e)=>{
-  if(panel.classList.contains('open') && !panel.contains(e.target) && e.target !== hamb){
-    panel.classList.remove('open');
-    panel.setAttribute('aria-hidden','true');
-  }
-});
