@@ -1,5 +1,27 @@
-/* Load stored posts from localStorage */
-const posts = JSON.parse(localStorage.getItem('journalPosts') || '{}');
+/* Load posts from entries.json (fresh fetch) */
+let posts = {};
+
+fetch(`entries.json?t=${Date.now()}`)
+  .then(res => res.json())
+  .then(data => {
+    posts = data;
+    console.log("✅ Loaded posts from entries.json:", posts);
+
+    // Initialize the calendar and load today's post after JSON is fetched
+    populateMonthYearControls();
+    buildCalendar(+monthSelect.value, +yearSelect.value);
+
+    const dateToLoad = location.hash?.slice(1) || fmtLocal(new Date());
+    renderPost(dateToLoad);
+  })
+  .catch(err => {
+    console.error("⚠️ Failed to load entries.json, using localStorage fallback.", err);
+    posts = JSON.parse(localStorage.getItem('journalPosts') || '{}');
+    populateMonthYearControls();
+    buildCalendar(+monthSelect.value, +yearSelect.value);
+    const dateToLoad = location.hash?.slice(1) || fmtLocal(new Date());
+    renderPost(dateToLoad);
+  });
 
 const el = (s)=> document.querySelector(s);
 const panel = el('#panel');
@@ -134,19 +156,3 @@ yearSelect.addEventListener('change', ()=> buildCalendar(+monthSelect.value, +ye
 populateMonthYearControls();
 buildCalendar(+monthSelect.value, +yearSelect.value);
 
-/* Load today's post or hash */
-(function initLoad(){
-  let dateToLoad = null;
-  if(location.hash && /^#\d{4}-\d{2}-\d{2}$/.test(location.hash)){
-    dateToLoad = location.hash.slice(1);
-  } else {
-    dateToLoad = fmtLocal(new Date());
-  }
-  const d = new Date(dateToLoad);
-  if(!isNaN(d)){
-    monthSelect.value = d.getMonth();
-    yearSelect.value = d.getFullYear();
-    buildCalendar(d.getMonth(), d.getFullYear());
-  }
-  renderPost(dateToLoad);
-})();
