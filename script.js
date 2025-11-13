@@ -6,9 +6,9 @@ const username = "parmeshwarekah";
 const repo = "blogs";
 const path = "entries.json";
 
-// ✅ Fetch directly from the live GitHub Pages site (same folder as index.html)
-const apiUrl = `./entries.json?t=${Date.now()}`;
-
+// ✅ Always fetch the latest version directly (bypasses GitHub Pages cache)
+const apiUrl = `https://raw.githubusercontent.com/${username}/${repo}/main/${path}?t=${Date.now()}`;
+i did 
 fetch(apiUrl, { cache: "no-store" })
   .then(res => {
     if (!res.ok) throw new Error("entries.json not found");
