@@ -9,29 +9,41 @@ const path = "entries.json";
 // ✅ Always fetch the latest version directly (bypasses GitHub Pages cache)
 const apiUrl = `https://raw.githubusercontent.com/${username}/${repo}/main/${path}?t=${Date.now()}`;
 i did 
-fetch(apiUrl, { cache: "no-store" })
-  .then(res => {
+
+/* Always load fresh entries.json and update the site */
+let posts = {};
+
+const username = "parmeshwarekah";
+const repo = "blogs";
+const path = "entries.json";
+const apiUrl = `./${path}?t=${Date.now()}`;
+
+// Clear any cached posts before loading
+localStorage.removeItem("journalPosts");
+
+(async () => {
+  try {
+    const res = await fetch(apiUrl, { cache: "no-store" });
     if (!res.ok) throw new Error("entries.json not found");
-    return res.json();
-  })
-  .then(data => {
-    posts = data;
-    console.log("✅ Loaded posts from entries.json:", posts);
 
-    populateMonthYearControls();
-    buildCalendar(+monthSelect.value, +yearSelect.value);
+    posts = await res.json();
+    console.log("✅ Loaded latest posts:", posts);
 
-    const dateToLoad = location.hash?.slice(1) || fmtLocal(new Date());
-    renderPost(dateToLoad);
-  })
-  .catch(err => {
-    console.error("⚠️ Failed to load entries.json, using localStorage fallback.", err);
+    // Save latest posts to localStorage for offline use
+    localStorage.setItem("journalPosts", JSON.stringify(posts));
+
+  } catch (err) {
+    console.error("⚠️ Could not fetch new entries, using cached data.", err);
     posts = JSON.parse(localStorage.getItem("journalPosts") || "{}");
-    populateMonthYearControls();
-    buildCalendar(+monthSelect.value, +yearSelect.value);
-    const dateToLoad = location.hash?.slice(1) || fmtLocal(new Date());
-    renderPost(dateToLoad);
-  });
+  }
+
+  // ✅ Build UI only after posts are loaded
+  populateMonthYearControls();
+  buildCalendar(+monthSelect.value, +yearSelect.value);
+
+  const dateToLoad = location.hash?.slice(1) || fmtLocal(new Date());
+  renderPost(dateToLoad);
+})();
 
 /* -------- DOM + UI -------- */
 const el = s => document.querySelector(s);
