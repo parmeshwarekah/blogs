@@ -6,8 +6,8 @@ const username = "parmeshwarekah";
 const repo = "blogs";
 const path = "entries.json";
 
-// ✅ Always fetch the latest version directly (bypasses caching)
-const apiUrl = `https://raw.githubusercontent.com/${username}/${repo}/main/${path}?t=${Date.now()}`;
+// ✅ Fetch directly from the live GitHub Pages site (same folder as index.html)
+const apiUrl = `./entries.json?t=${Date.now()}`;
 
 fetch(apiUrl, { cache: "no-store" })
   .then(res => {
